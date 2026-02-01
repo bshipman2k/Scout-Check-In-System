@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scout Check-In System</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏕️ Scout Check-In System</h1>
+      <p class="subtitle">Welcome!</p>
+    </div>
+
+    <!-- Event Selection Screen -->
+    <div id="eventSelection" style="display: none;">
+      <h2>Select Your Event</h2>
+      <p>Choose the event you're attending:</p>
+      <div id="eventsTableContainer">
+        <table class="events-table">
+          <thead>
+            <tr>
+              <th>Event Name</th>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="eventsTableBody">
+            <!-- Events will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+      <div id="loadingEvents" class="loading">Loading events...</div>
+    </div>
+
+    <!-- Main Menu (shown after event selected) -->
+    <div id="mainMenu" style="display: none;">
+      <div class="current-event-banner">
+        <strong>Event:</strong> <span id="currentEventName">Loading...</span>
+      </div>
+
+      <div class="menu-grid">
+        <a href="#register" class="menu-card" onclick="navigateTo('register'); return false;">
+          <div class="menu-icon">📝</div>
+          <h3>Register Family</h3>
+          <p>First time? Register your family here</p>
+        </a>
+
+        <a href="#checkin" class="menu-card" onclick="navigateTo('checkin'); return false;">
+          <div class="menu-icon">✅</div>
+          <h3>Check In</h3>
+          <p>Arriving at the campsite</p>
+        </a>
+
+        <a href="#checkout" class="menu-card" onclick="navigateTo('checkout'); return false;">
+          <div class="menu-icon">👋</div>
+          <h3>Check Out</h3>
+          <p>Leaving the campsite</p>
+        </a>
+
+        <a href="#dashboard" class="menu-card" onclick="navigateTo('dashboard'); return false;">
+          <div class="menu-icon">📊</div>
+          <h3>Leader Dashboard</h3>
+          <p>View current attendance</p>
+        </a>
+      </div>
+
+      <div class="info-section">
+        <h3>How It Works</h3>
+        <ol>
+          <li><strong>First Time:</strong> Register your family with all members</li>
+          <li><strong>Arriving:</strong> Check in when you arrive at camp</li>
+          <li><strong>Leaving:</strong> Check out when departing (even temporarily)</li>
+          <li><strong>Leaders:</strong> View real-time attendance on the dashboard</li>
+        </ol>
+      </div>
+
+      <button onclick="changeEvent()" class="btn-secondary" style="margin-top: 20px;">Change Event</button>
+    </div>
+
+    <div class="footer">
+      <p>Ready for Spring 2026 Campout - February 27, 2026</p>
+      <p class="small-text">For help, contact your Pack leadership</p>
+    </div>
+  </div>
+
+  <script>
+    var selectedEventId = null;
+    var baseUrl = 'https://script.google.com/macros/s/AKfycbyFytMVAE404Kz3r3V_Jv0kmFP_CunjWKLNXIZErmuSBwMm_QweS0ZvAc2-3Q12oUtDnA/exec';
+
+    // Check if event is passed in URL parameter
+    function getUrlParameter(name) {
+      name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+      var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+      var results = regex.exec(window.location.search);
+      return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+    function loadPage() {
+      var eventId = getUrlParameter('event');
+      
+      if (eventId) {
+        // Event specified in URL - store it and show menu
+        selectedEventId = eventId;
+        localStorage.setItem('selectedEventId', eventId);
+        showMainMenu();
+      } else {
+        // Check localStorage for previously selected event
+        var storedEventId = localStorage.getItem('selectedEventId');
+        if (storedEventId) {
+          selectedEventId = storedEventId;
+          showMainMenu();
+        } else {
+          // No event selected - show event selection
+          showEventSelection();
+        }
+      }
+    }
+
+    function showEventSelection() {
+      document.getElementById('eventSelection').style.display = 'block';
+      document.getElementById('mainMenu').style.display = 'none';
+      loadEvents();
+    }
+
+    function showMainMenu() {
+      document.getElementById('eventSelection').style.display = 'none';
+      document.getElementById('mainMenu').style.display = 'block';
+      loadCurrentEventName();
+    }
+
+    function loadEvents() {
+      document.getElementById('loadingEvents').style.display = 'block';
+      google.script.run
+        .withSuccessHandler(displayEvents)
+        .withFailureHandler(function(error) {
+          alert('Error loading events: ' + error.message);
+        })
+        .getEvents();
+    }
+
+    function displayEvents(events) {
+      document.getElementById('loadingEvents').style.display = 'none';
+      var tbody = document.getElementById('eventsTableBody');
+      tbody.innerHTML = '';
+
+      // Filter to only show Active events
+      var activeEvents = events.filter(function(event) {
+        return event.status === 'Active';
+      });
+
+      if (activeEvents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No active events found</td></tr>';
+        return;
+      }
+
+      activeEvents.forEach(function(event) {
+        var row = tbody.insertRow();
+        row.innerHTML = '<td>' + event.eventName + '</td>' +
+                       '<td>' + formatDate(event.eventDate) + '</td>' +
+                       '<td>' + event.location + '</td>' +
+                       '<td><button onclick="selectEvent(\'' + event.eventId + '\', \'' + event.eventName + '\')" class="btn">Select</button></td>';
+      });
+    }
+
+    function formatDate(dateString) {
+      var date = new Date(dateString);
+      return date.toLocaleDateString();
+    }
+
+    function selectEvent(eventId, eventName) {
+      selectedEventId = eventId;
+      localStorage.setItem('selectedEventId', eventId);
+      localStorage.setItem('selectedEventName', eventName);
+      showMainMenu();
+    }
+
+    function loadCurrentEventName() {
+      var eventName = localStorage.getItem('selectedEventName');
+      if (eventName) {
+        document.getElementById('currentEventName').textContent = eventName;
+      } else {
+        // Fetch event name from server
+        google.script.run
+          .withSuccessHandler(function(events) {
+            var event = events.find(function(e) { return e.eventId === selectedEventId; });
+            if (event) {
+              document.getElementById('currentEventName').textContent = event.eventName;
+              localStorage.setItem('selectedEventName', event.eventName);
+            }
+          })
+          .getEvents();
+      }
+    }
+
+    function changeEvent() {
+      localStorage.removeItem('selectedEventId');
+      localStorage.removeItem('selectedEventName');
+      showEventSelection();
+    }
+
+    function navigateTo(page) {
+      window.top.location.href = baseUrl + '?event=' + selectedEventId + '&page=' + page;
+    }
+
+    // Load page on document ready
+    window.addEventListener('load', loadPage);
+  </script>
+</body>
+</html>

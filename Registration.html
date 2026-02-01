@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Registration</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📝 Family Registration</h1>
+      <p class="subtitle">One-time setup for your family</p>
+      <a href="#home" onclick="goHome(); return false;" class="back-link">← Back to Home</a>
+    </div>
+
+    <div class="form-section">
+      <form id="registrationForm">
+        <h3>Family Information</h3>
+        
+        <div class="form-group">
+          <label for="lastName">Family Last Name *</label>
+          <input type="text" id="lastName" name="lastName" required>
+        </div>
+
+        <div class="form-group">
+          <label>Do all family members share the same last name?</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="sharedLastName" value="yes" checked onchange="toggleLastNameFields()">
+              Yes, we all share the family last name
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="sharedLastName" value="no" onchange="toggleLastNameFields()">
+              No, family members have different last names
+            </label>
+          </div>
+        </div>
+
+        <h3>Parent/Guardian 1 *</h3>
+        
+        <div class="form-group">
+          <label for="parent1Name">Full Name *</label>
+          <input type="text" id="parent1Name" name="parent1Name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="parent1Phone">Cell Phone *</label>
+          <input type="tel" id="parent1Phone" name="parent1Phone" required placeholder="(555) 123-4567">
+        </div>
+
+        <div class="form-group">
+          <label for="parent1Email">Email Address *</label>
+          <input type="email" id="parent1Email" name="parent1Email" required>
+        </div>
+
+        <h3>Parent/Guardian 2 (Optional)</h3>
+        
+        <div class="form-group">
+          <label for="parent2Name">Full Name</label>
+          <input type="text" id="parent2Name" name="parent2Name">
+        </div>
+
+        <div class="form-group">
+          <label for="parent2Phone">Cell Phone</label>
+          <input type="tel" id="parent2Phone" name="parent2Phone" placeholder="(555) 123-4567">
+        </div>
+
+        <div class="form-group">
+          <label for="parent2Email">Email Address</label>
+          <input type="email" id="parent2Email" name="parent2Email">
+        </div>
+
+        <h3>Family Members</h3>
+        <p class="help-text">Add all Scouts and siblings who may attend campouts</p>
+
+        <div id="membersList">
+          <!-- Members will be added here dynamically -->
+        </div>
+
+        <button type="button" class="btn btn-secondary" onclick="addMember()">+ Add Family Member</button>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Register Family</button>
+        </div>
+      </form>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    var memberCount = 0;
+
+    function addMember() {
+      memberCount++;
+      var membersDiv = document.getElementById('membersList');
+      
+      var memberDiv = document.createElement('div');
+      memberDiv.className = 'member-item';
+      memberDiv.id = 'member' + memberCount;
+      
+      memberDiv.innerHTML = `
+        <div class="member-header">
+          <h4>Family Member ${memberCount}</h4>
+          <button type="button" class="btn-remove" onclick="removeMember(${memberCount})">Remove</button>
+        </div>
+        <div class="form-group">
+          <label for="memberName${memberCount}">First Name *</label>
+          <input type="text" id="memberName${memberCount}" name="memberName${memberCount}" required placeholder="First and middle names">
+        </div>
+        <div class="form-group member-lastname-field" id="memberLastNameGroup${memberCount}" style="display: none;">
+          <label for="memberLastName${memberCount}">Last Name *</label>
+          <input type="text" id="memberLastName${memberCount}" name="memberLastName${memberCount}" placeholder="Last name">
+        </div>
+        <div class="form-group">
+          <label for="memberType${memberCount}">Type *</label>
+          <select id="memberType${memberCount}" name="memberType${memberCount}" required>
+            <option value="">Select...</option>
+            <option value="Scout">Scout</option>
+            <option value="Sibling">Sibling</option>
+            <option value="Parent">Parent</option>
+            <option value="Guardian">Guardian</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="memberAge${memberCount}">Age (optional)</label>
+          <input type="number" id="memberAge${memberCount}" name="memberAge${memberCount}" min="1" max="99">
+        </div>
+      `;
+      
+      membersDiv.appendChild(memberDiv);
+    }
+
+    function removeMember(id) {
+      var memberDiv = document.getElementById('member' + id);
+      if (memberDiv) {
+        memberDiv.remove();
+      }
+    }
+
+    function toggleLastNameFields() {
+      var sharedLastName = document.querySelector('input[name="sharedLastName"]:checked').value;
+      var lastNameFields = document.querySelectorAll('.member-lastname-field');
+      
+      lastNameFields.forEach(function(field) {
+        if (sharedLastName === 'no') {
+          field.style.display = 'block';
+          var input = field.querySelector('input');
+          if (input) input.required = true;
+        } else {
+          field.style.display = 'none';
+          var input = field.querySelector('input');
+          if (input) input.required = false;
+        }
+      });
+    }
+
+    // Add first member by default
+    window.onload = function() {
+      addMember();
+    };
+
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      var messageDiv = document.getElementById('message');
+      messageDiv.className = 'message';
+      messageDiv.textContent = 'Registering family...';
+      
+      // Collect form data
+      var sharedLastName = document.querySelector('input[name="sharedLastName"]:checked').value;
+      var familyData = {
+        lastName: document.getElementById('lastName').value,
+        sharedLastName: sharedLastName === 'yes',
+        parent1Name: document.getElementById('parent1Name').value,
+        parent1Phone: document.getElementById('parent1Phone').value,
+        parent1Email: document.getElementById('parent1Email').value,
+        parent2Name: document.getElementById('parent2Name').value,
+        parent2Phone: document.getElementById('parent2Phone').value,
+        parent2Email: document.getElementById('parent2Email').value,
+        members: []
+      };
+      
+      // Collect all members
+      var membersDiv = document.getElementById('membersList');
+      var memberDivs = membersDiv.getElementsByClassName('member-item');
+      
+      for (var i = 0; i < memberDivs.length; i++) {
+        var memberDiv = memberDivs[i];
+        var memberId = memberDiv.id.replace('member', '');
+        
+        var nameInput = document.getElementById('memberName' + memberId);
+        var lastNameInput = document.getElementById('memberLastName' + memberId);
+        var typeInput = document.getElementById('memberType' + memberId);
+        var ageInput = document.getElementById('memberAge' + memberId);
+        
+        if (nameInput && typeInput && nameInput.value && typeInput.value) {
+          familyData.members.push({
+            name: nameInput.value,
+            lastName: lastNameInput ? lastNameInput.value : '',
+            type: typeInput.value,
+            age: ageInput.value
+          });
+        }
+      }
+      
+      if (familyData.members.length === 0) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Please add at least one family member.';
+        return;
+      }
+      
+      // Submit to backend
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = response.message + ' Family ID: ' + response.familyId;
+            document.getElementById('registrationForm').reset();
+            document.getElementById('membersList').innerHTML = '';
+            memberCount = 0;
+            addMember();
+            
+            // Scroll to message
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+          } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = response.message;
+          }
+        })
+        .withFailureHandler(function(error) {
+          messageDiv.className = 'message error';
+          messageDiv.textContent = 'Error: ' + error.message;
+        })
+        .registerFamily(familyData);
+    });
+
+    function goHome() {
+      var baseUrl = 'https://script.google.com/macros/s/AKfycbyFytMVAE404Kz3r3V_Jv0kmFP_CunjWKLNXIZErmuSBwMm_QweS0ZvAc2-3Q12oUtDnA/exec';
+      window.top.location.href = baseUrl;
+    }
+  </script>
+</body>
+</html>

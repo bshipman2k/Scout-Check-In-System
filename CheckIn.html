@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check In</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Check In</h1>
+      <p class="subtitle">Welcome to camp! Let us know you're here</p>
+      <a href="#home" onclick="goHome(); return false;" class="back-link">← Back to Home</a>
+    </div>
+
+    <div class="form-section">
+      <!-- Event Banner (shown when event is in URL) -->
+      <div id="eventBanner" class="current-event-banner" style="display: none;">
+        <strong>Event:</strong> <span id="eventBannerName">Loading...</span>
+      </div>
+
+      <!-- Event Selection (shown when no event in URL) -->
+      <div id="eventSelection" class="form-group">
+        <label for="eventSelect">Select Event *</label>
+        <select id="eventSelect" required>
+          <option value="">Loading events...</option>
+        </select>
+      </div>
+
+      <!-- Search Section -->
+      <div id="searchSection" style="display: none;">
+        <h3>Find Your Family</h3>
+        <div class="form-group">
+          <label for="searchBox">Search by Last Name</label>
+          <input type="text" id="searchBox" placeholder="Enter last name...">
+          <button class="btn btn-primary" onclick="searchFamily()">Search</button>
+        </div>
+
+        <div id="searchResults"></div>
+      </div>
+
+      <!-- Check In Form -->
+      <div id="checkInForm" style="display: none;">
+        <h3>Select Who's Arriving</h3>
+        <p class="help-text">Check the boxes for everyone arriving right now</p>
+        
+        <div id="familyInfo" class="info-box"></div>
+        
+        <div id="membersList"></div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="backToSearch()">← Back to Search</button>
+          <button class="btn btn-primary" onclick="submitCheckIn()">Check In Selected</button>
+        </div>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    var selectedEvent = null;
+    var selectedFamily = null;
+    var eventIdFromServer = '<?= eventId ?>';
+
+    // Get URL parameter (fallback method)
+    function getUrlParameter(name) {
+      name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+      var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+      var results = regex.exec(window.location.search);
+      return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+    // Load events on page load
+    window.onload = function() {
+      // Use event ID from server (passed via template)
+      var eventIdFromUrl = eventIdFromServer || getUrlParameter('event');
+      
+      google.script.run
+        .withSuccessHandler(function(events) {
+          var select = document.getElementById('eventSelect');
+          select.innerHTML = '<option value="">Select an event...</option>';
+          
+          if (events.length === 0) {
+            select.innerHTML = '<option value="">No events available</option>';
+          } else {
+            events.forEach(function(event) {
+              if (event.status === 'Active') {
+                var option = document.createElement('option');
+                option.value = event.eventId;
+                option.textContent = event.eventName + ' - ' + event.eventDate;
+                select.appendChild(option);
+              }
+            });
+            
+            // If event is in URL, hide dropdown and show banner
+            if (eventIdFromUrl) {
+              selectedEvent = eventIdFromUrl;
+              document.getElementById('eventSelection').style.display = 'none';
+              document.getElementById('eventBanner').style.display = 'block';
+              
+              // Find and display event name
+              var selectedEventObj = events.find(function(e) { return e.eventId === eventIdFromUrl; });
+              if (selectedEventObj) {
+                document.getElementById('eventBannerName').textContent = selectedEventObj.eventName + ' - ' + formatDate(selectedEventObj.eventDate);
+              }
+              
+              document.getElementById('searchSection').style.display = 'block';
+              document.getElementById('searchBox').focus();
+            }
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('eventSelect').innerHTML = '<option value="">Error loading events</option>';
+        })
+        .getEvents();
+    };
+
+    function formatDate(dateString) {
+      var date = new Date(dateString);
+      return date.toLocaleDateString();
+    }
+
+    // Show search when event is selected
+    document.getElementById('eventSelect').addEventListener('change', function() {
+      selectedEvent = this.value;
+      if (selectedEvent) {
+        document.getElementById('searchSection').style.display = 'block';
+        document.getElementById('searchBox').focus();
+      } else {
+        document.getElementById('searchSection').style.display = 'none';
+        document.getElementById('checkInForm').style.display = 'none';
+      }
+    });
+
+    function searchFamily() {
+      var searchTerm = document.getElementById('searchBox').value.trim();
+      var resultsDiv = document.getElementById('searchResults');
+      
+      if (!searchTerm) {
+        resultsDiv.innerHTML = '<p class="error">Please enter a last name to search.</p>';
+        return;
+      }
+      
+      resultsDiv.innerHTML = '<p>Searching...</p>';
+      
+      google.script.run
+        .withSuccessHandler(function(results) {
+          if (results.length === 0) {
+            resultsDiv.innerHTML = '<p class="error">No families found. Please check spelling or <a href="?page=register">register your family</a>.</p>';
+          } else {
+            var html = '<div class="results-list">';
+            results.forEach(function(family) {
+              html += `
+                <div class="result-item" onclick="selectFamily('${family.familyId}')">
+                  <h4>${family.lastName} Family</h4>
+                  <p>Contact: ${family.parent1Name} - ${family.parent1Phone}</p>
+                  <p class="small-text">${family.members.length} member(s)</p>
+                </div>
+              `;
+            });
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+          }
+        })
+        .withFailureHandler(function(error) {
+          resultsDiv.innerHTML = '<p class="error">Error searching: ' + error.message + '</p>';
+        })
+        .searchFamilies(searchTerm);
+    }
+
+    // Allow search on Enter key
+    document.getElementById('searchBox').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        searchFamily();
+      }
+    });
+
+    function selectFamily(familyId) {
+      var messageDiv = document.getElementById('message');
+      messageDiv.className = 'message';
+      messageDiv.textContent = 'Loading family information...';
+      
+      // First, get the checked-in status for this family
+      google.script.run
+        .withSuccessHandler(function(checkedInMembers) {
+          // Then get the full family information
+          google.script.run
+            .withSuccessHandler(function(results) {
+              var family = results.find(f => f.familyId === familyId);
+              if (!family) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Family not found.';
+                return;
+              }
+              
+              selectedFamily = family;
+              
+              // Show family info
+              document.getElementById('familyInfo').innerHTML = `
+                <h4>${family.lastName} Family</h4>
+                <p>Contact: ${family.parent1Name}</p>
+              `;
+              
+              // Create a set of checked-in member names for quick lookup
+              var checkedInNames = new Set(
+                checkedInMembers.filter(m => m.checkedIn).map(m => m.name)
+              );
+              
+              // Show members list with check-in status
+              var membersHtml = '';
+              family.members.forEach(function(member, index) {
+                if (checkedInNames.has(member.name)) {
+                  // Already checked in - show without checkbox
+                  membersHtml += `
+                    <div class="checkbox-item" style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                      <span style="color: #2e7d32; font-weight: bold;">✓ Already Checked In:</span>
+                      <strong>${member.name}</strong> - ${member.type}
+                      ${member.age ? ' (Age ' + member.age + ')' : ''}
+                    </div>
+                  `;
+                } else {
+                  // Not checked in - show with checkbox
+                  membersHtml += `
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="member${index}" value="${member.name}">
+                      <label for="member${index}">
+                        <strong>${member.name}</strong> - ${member.type}
+                        ${member.age ? ' (Age ' + member.age + ')' : ''}
+                      </label>
+                    </div>
+                  `;
+                }
+              });
+              document.getElementById('membersList').innerHTML = membersHtml;
+              
+              // Show check-in form
+              document.getElementById('searchSection').style.display = 'none';
+              document.getElementById('checkInForm').style.display = 'block';
+              messageDiv.textContent = '';
+            })
+            .withFailureHandler(function(error) {
+              messageDiv.className = 'message error';
+              messageDiv.textContent = 'Error: ' + error.message;
+            })
+            .searchFamilies(document.getElementById('searchBox').value);
+        })
+        .withFailureHandler(function(error) {
+          messageDiv.className = 'message error';
+          messageDiv.textContent = 'Error loading check-in status: ' + error.message;
+        })
+        .getCheckedInMembers(selectedEvent, familyId);
+    }
+
+    function backToSearch() {
+      document.getElementById('checkInForm').style.display = 'none';
+      document.getElementById('searchSection').style.display = 'block';
+      selectedFamily = null;
+    }
+
+    function submitCheckIn() {
+      var checkboxes = document.getElementById('membersList').querySelectorAll('input[type="checkbox"]:checked');
+      var selectedMembers = [];
+      
+      checkboxes.forEach(function(cb) {
+        selectedMembers.push(cb.value);
+      });
+      
+      if (selectedMembers.length === 0) {
+        var messageDiv = document.getElementById('message');
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Please select at least one person to check in.';
+        return;
+      }
+      
+      var messageDiv = document.getElementById('message');
+      messageDiv.className = 'message';
+      messageDiv.textContent = 'Checking in...';
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = response.message;
+            
+            // Uncheck all boxes
+            document.getElementById('membersList').querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+              cb.checked = false;
+            });
+            
+            // Scroll to message
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+          } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = response.message;
+          }
+        })
+        .withFailureHandler(function(error) {
+          messageDiv.className = 'message error';
+          messageDiv.textContent = 'Error: ' + error.message;
+        })
+        .checkInMembers(selectedEvent, selectedFamily.familyId, selectedMembers);
+    }
+
+    function goHome() {
+      var baseUrl = 'https://script.google.com/macros/s/AKfycbyFytMVAE404Kz3r3V_Jv0kmFP_CunjWKLNXIZErmuSBwMm_QweS0ZvAc2-3Q12oUtDnA/exec';
+      window.top.location.href = baseUrl;
+    }
+  </script>
+</body>
+</html>

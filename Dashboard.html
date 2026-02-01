@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leader Dashboard</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Leader Dashboard</h1>
+      <p class="subtitle">Real-time attendance tracking</p>
+      <a href="#home" onclick="goHome(); return false;" class="back-link">← Back to Home</a>
+    </div>
+
+    <div class="dashboard-section">
+      <!-- Event Selection -->
+      <div class="form-group">
+        <label for="eventSelect">Select Event</label>
+        <select id="eventSelect">
+          <option value="">Loading events...</option>
+        </select>
+        <button class="btn btn-secondary" onclick="createNewEvent()" style="margin-top: 10px;">+ Create New Event</button>
+      </div>
+
+      <!-- Statistics -->
+      <div id="statsSection" style="display: none;">
+        <div class="stats-list">
+          <div class="stat-row">
+            <span class="stat-label">Total On Site:</span>
+            <span class="stat-value" id="totalOnSite">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Scouts:</span>
+            <span class="stat-value" id="scoutsCount">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Siblings:</span>
+            <span class="stat-value" id="siblingsCount">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Adults:</span>
+            <span class="stat-value" id="adultsCount">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Families:</span>
+            <span class="stat-value" id="familiesCount">0</span>
+          </div>
+        </div>
+
+        <div class="actions-bar">
+          <button class="btn btn-primary" onclick="refreshAttendance()">🔄 Refresh</button>
+          <button class="btn btn-secondary" onclick="exportData()">📥 Export to Sheet</button>
+        </div>
+
+        <!-- Attendance List -->
+        <h3>Currently On Site</h3>
+        <div id="attendanceList" class="attendance-list"></div>
+      </div>
+
+      <!-- Create Event Modal -->
+      <div id="createEventModal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3>Create New Event</h3>
+          <div class="form-group">
+            <label for="newEventName">Event Name *</label>
+            <input type="text" id="newEventName" placeholder="e.g., Spring 2026 Campout">
+          </div>
+          <div class="form-group">
+            <label for="newEventDate">Event Date *</label>
+            <input type="date" id="newEventDate">
+          </div>
+          <div class="form-group">
+            <label for="newEventLocation">Location *</label>
+            <input type="text" id="newEventLocation" placeholder="e.g., Camp Wilderness">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" onclick="closeEventModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitNewEvent()">Create Event</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    var selectedEvent = null;
+    var refreshInterval = null;
+
+    // Load events on page load
+    window.onload = function() {
+      loadEvents();
+    };
+
+    function loadEvents() {
+      google.script.run
+        .withSuccessHandler(function(events) {
+          var select = document.getElementById('eventSelect');
+          select.innerHTML = '<option value="">Select an event...</option>';
+          
+          if (events.length === 0) {
+            select.innerHTML += '<option value="">No events available - Create one below</option>';
+          } else {
+            events.forEach(function(event) {
+              var option = document.createElement('option');
+              option.value = event.eventId;
+              option.textContent = event.eventName + ' - ' + event.eventDate + ' (' + event.status + ')';
+              select.appendChild(option);
+              
+              // Auto-select the first active event
+              if (event.status === 'Active' && !selectedEvent) {
+                select.value = event.eventId;
+                selectedEvent = event.eventId;
+                showDashboard();
+              }
+            });
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('eventSelect').innerHTML = '<option value="">Error loading events</option>';
+        })
+        .getEvents();
+    }
+
+    // Event selection change
+    document.getElementById('eventSelect').addEventListener('change', function() {
+      selectedEvent = this.value;
+      if (selectedEvent) {
+        showDashboard();
+      } else {
+        document.getElementById('statsSection').style.display = 'none';
+        stopAutoRefresh();
+      }
+    });
+
+    function showDashboard() {
+      document.getElementById('statsSection').style.display = 'block';
+      refreshAttendance();
+      startAutoRefresh();
+    }
+
+    function refreshAttendance() {
+      if (!selectedEvent) return;
+      
+      // Get statistics
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          document.getElementById('totalOnSite').textContent = stats.totalOnSite;
+          document.getElementById('scoutsCount').textContent = stats.scouts;
+          document.getElementById('siblingsCount').textContent = stats.siblings;
+          document.getElementById('adultsCount').textContent = stats.adults;
+          document.getElementById('familiesCount').textContent = stats.familiesCount;
+        })
+        .getAttendanceStats(selectedEvent);
+      
+      // Get attendance list
+      google.script.run
+        .withSuccessHandler(function(attendance) {
+          var listDiv = document.getElementById('attendanceList');
+          
+          // Add null check
+          if (!attendance || !Array.isArray(attendance)) {
+            console.error('Invalid attendance data received:', attendance);
+            listDiv.innerHTML = '<p class="error">Error loading attendance data. Check browser console for details.</p>';
+            return;
+          }
+          
+          if (attendance.length === 0) {
+            listDiv.innerHTML = '<p class="info">No one is currently checked in.</p>';
+          } else {
+            var html = '<table class="attendance-table">';
+            html += '<thead><tr><th>Family</th><th>Name</th><th>Check-In Date</th><th>Check-In Time</th></tr></thead>';
+            html += '<tbody>';
+            
+            attendance.forEach(function(person) {
+              var checkInTime = new Date(person.checkInTime);
+              var dateStr = checkInTime.toLocaleDateString('en-US', { 
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              var timeStr = checkInTime.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+              });
+              
+              html += `
+                <tr>
+                  <td>${person.lastName}</td>
+                  <td>${person.memberName}</td>
+                  <td>${dateStr}</td>
+                  <td>${timeStr}</td>
+                </tr>
+              `;
+            });
+            
+            html += '</tbody></table>';
+            listDiv.innerHTML = html;
+          }
+          
+          // Update last refresh time
+          var now = new Date();
+          var timeStr = now.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true 
+          });
+          document.getElementById('message').textContent = 'Last updated: ' + timeStr;
+          document.getElementById('message').className = 'message';
+        })
+        .withFailureHandler(function(error) {
+          console.error('Server error getting attendance:', error);
+          var listDiv = document.getElementById('attendanceList');
+          listDiv.innerHTML = '<p class="error">Server error: ' + error.message + '</p>';
+        })
+        .getCurrentAttendance(selectedEvent);
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      // Refresh every 30 seconds
+      refreshInterval = setInterval(refreshAttendance, 30000);
+    }
+
+    function stopAutoRefresh() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+    }
+
+    function createNewEvent() {
+      document.getElementById('createEventModal').style.display = 'flex';
+      // Set default date to Feb 27, 2026
+      document.getElementById('newEventDate').value = '2026-02-27';
+    }
+
+    function closeEventModal() {
+      document.getElementById('createEventModal').style.display = 'none';
+      document.getElementById('newEventName').value = '';
+      document.getElementById('newEventDate').value = '';
+      document.getElementById('newEventLocation').value = '';
+    }
+
+    function submitNewEvent() {
+      var name = document.getElementById('newEventName').value.trim();
+      var date = document.getElementById('newEventDate').value;
+      var location = document.getElementById('newEventLocation').value.trim();
+      
+      if (!name || !date || !location) {
+        alert('Please fill in all fields');
+        return;
+      }
+      
+      var messageDiv = document.getElementById('message');
+      messageDiv.className = 'message';
+      messageDiv.textContent = 'Creating event...';
+      
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = response.message;
+            closeEventModal();
+            loadEvents();
+          } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = response.message;
+          }
+        })
+        .withFailureHandler(function(error) {
+          messageDiv.className = 'message error';
+          messageDiv.textContent = 'Error: ' + error.message;
+        })
+        .createEvent(name, date, location);
+    }
+
+    function exportData() {
+      var messageDiv = document.getElementById('message');
+      messageDiv.className = 'message success';
+      messageDiv.textContent = 'Data is automatically saved in your Google Sheet. Go to Extensions → Apps Script to view the spreadsheet.';
+    }
+
+    // Clean up on page unload
+    window.onbeforeunload = function() {
+      stopAutoRefresh();
+    };
+
+    function goHome() {
+      var baseUrl = 'https://script.google.com/macros/s/AKfycbyFytMVAE404Kz3r3V_Jv0kmFP_CunjWKLNXIZErmuSBwMm_QweS0ZvAc2-3Q12oUtDnA/exec';
+      window.top.location.href = baseUrl;
+    }
+  </script>
+</body>
+</html>
