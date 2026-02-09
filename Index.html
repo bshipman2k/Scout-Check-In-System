@@ -2,15 +2,18 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Scout Check-In System</title>
   <?!= include('Stylesheet'); ?>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🏕️ Scout Check-In System</h1>
-      <p class="subtitle">Welcome!</p>
+      <div id="packLogo" class="pack-logo" style="display: none;">
+        <img id="packLogoImg" src="" alt="Pack Logo">
+      </div>
+      <h1 id="packTitle">🏕️ Scout Check-In System</h1>
+      <p class="subtitle" id="packSubtitle">Welcome!</p>
     </div>
 
     <!-- Event Selection Screen -->
@@ -41,30 +44,58 @@
         <strong>Event:</strong> <span id="currentEventName">Loading...</span>
       </div>
 
-      <div class="menu-grid">
-        <a href="#register" class="menu-card" onclick="navigateTo('register'); return false;">
-          <div class="menu-icon">📝</div>
-          <h3>Register Family</h3>
-          <p>First time? Register your family here</p>
-        </a>
+      <!-- Attendance Actions Section -->
+      <div class="menu-section">
+        <h2 class="section-heading">Attendance</h2>
+        <div class="menu-grid">
+          <a href="#checkin" class="menu-card" onclick="navigateTo('checkin'); return false;">
+            <div class="menu-icon">✅</div>
+            <h3>Check In</h3>
+            <p>Arriving at the campsite</p>
+          </a>
 
-        <a href="#checkin" class="menu-card" onclick="navigateTo('checkin'); return false;">
-          <div class="menu-icon">✅</div>
-          <h3>Check In</h3>
-          <p>Arriving at the campsite</p>
-        </a>
+          <a href="#checkout" class="menu-card" onclick="navigateTo('checkout'); return false;">
+            <div class="menu-icon">👋</div>
+            <h3>Check Out</h3>
+            <p>Leaving the campsite</p>
+          </a>
+        </div>
+      </div>
 
-        <a href="#checkout" class="menu-card" onclick="navigateTo('checkout'); return false;">
-          <div class="menu-icon">👋</div>
-          <h3>Check Out</h3>
-          <p>Leaving the campsite</p>
-        </a>
+      <!-- Registration Section -->
+      <div class="menu-section">
+        <h2 class="section-heading">Registration</h2>
+        <div class="menu-grid">
+          <a href="#register" class="menu-card" onclick="navigateTo('register'); return false;">
+            <div class="menu-icon">📝</div>
+            <h3>Register Family</h3>
+            <p>First time? Register your family here</p>
+          </a>
 
-        <a href="#dashboard" class="menu-card" onclick="navigateTo('dashboard'); return false;">
-          <div class="menu-icon">📊</div>
-          <h3>Leader Dashboard</h3>
-          <p>View current attendance</p>
-        </a>
+          <a href="#updateregistration" class="menu-card" onclick="navigateTo('updateregistration'); return false;">
+            <div class="menu-icon">✏️</div>
+            <h3>Update Registration</h3>
+            <p>Update family information or roster</p>
+          </a>
+        </div>
+      </div>
+
+      <!-- Leaders Section -->
+      <div class="menu-section">
+        <h2 class="section-heading">Leaders</h2>
+        <div class="menu-grid">
+          <a href="#dashboard" class="menu-card" onclick="navigateTo('dashboard'); return false;">
+            <div class="menu-icon">📊</div>
+            <h3>Leader Dashboard</h3>
+            <p>View current attendance</p>
+          </a>
+
+          <a href="#leadership" class="menu-card" onclick="navigateTo('leadership'); return false;">
+            <div class="menu-icon">👥</div>
+            <h3>Pack Leadership</h3>
+            <p>Contact our pack leaders</p>
+          </a>
+        </div>
       </div>
 
       <div class="info-section">
@@ -204,6 +235,26 @@
     function navigateTo(page) {
       window.top.location.href = baseUrl + '?event=' + selectedEventId + '&page=' + page;
     }
+
+    // Load pack configuration
+    google.script.run
+      .withSuccessHandler(function(config) {
+        // Update pack name in header
+        if (config.packName) {
+          document.getElementById('packTitle').innerHTML = '🏕️ ' + config.packName + ' Check-In';
+          document.getElementById('packSubtitle').textContent = 'Welcome to ' + config.packName + '!';
+        }
+        
+        // Show pack logo if configured
+        if (config.packLogoUrl) {
+          document.getElementById('packLogoImg').src = config.packLogoUrl;
+          document.getElementById('packLogo').style.display = 'block';
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.log('Config not loaded, using defaults');
+      })
+      .getConfig();
 
     // Load page on document ready
     window.addEventListener('load', loadPage);

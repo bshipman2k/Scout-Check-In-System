@@ -11,6 +11,29 @@
     min-height: 100vh;
     padding: 20px;
     color: #333;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
+  /* Prevent iOS zoom on all inputs - ULTRA AGGRESSIVE */
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  select,
+  textarea,
+  button {
+    font-size: 16px !important;
+    max-font-size: 16px !important;
+    -webkit-text-size-adjust: 100% !important;
+    -moz-text-size-adjust: 100% !important;
+    -ms-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+    touch-action: manipulation !important;
   }
 
   .container {
@@ -28,6 +51,19 @@
     padding: 30px;
     text-align: center;
     position: relative;
+  }
+
+  .pack-logo {
+    margin-bottom: 15px;
+  }
+
+  .pack-logo img {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: white;
+    padding: 5px;
   }
 
   .header h1 {
@@ -58,11 +94,26 @@
   }
 
   /* Menu Grid */
+  .menu-section {
+    padding: 0 30px 20px 30px;
+  }
+
+  .menu-section:last-child {
+    padding-bottom: 30px;
+  }
+
+  .section-heading {
+    color: #667eea;
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0;
+  }
+
   .menu-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
-    padding: 30px;
   }
 
   .menu-card {
@@ -119,12 +170,16 @@
   .form-group select,
   .form-group textarea {
     width: 100%;
-    padding: 12px;
+    padding: 16px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
     font-family: inherit;
     transition: border-color 0.3s;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    min-height: 48px;
   }
 
   .form-group input:focus,
@@ -526,41 +581,209 @@
     font-style: italic;
   }
 
+  /* Mobile Optimization */
+  /* Ensure all touch targets are at least 44px */
+  .btn,
+  .menu-card,
+  .checkbox-item,
+  .radio-label,
+  .result-item {
+    min-height: 44px;
+  }
+
   /* Responsive Design */
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
+    body {
+      padding: 10px;
+    }
+
+    .container {
+      border-radius: 12px;
+    }
+
+    .header {
+      padding: 20px 15px;
+    }
+
     .header h1 {
       font-size: 1.5em;
     }
 
+    .subtitle {
+      font-size: 1em;
+    }
+
+    .menu-section {
+      padding: 0 20px 15px 20px;
+    }
+
+    .section-heading {
+      font-size: 1.2em;
+      margin-bottom: 12px;
+    }
+
     .menu-grid {
       grid-template-columns: 1fr;
+      gap: 15px;
+    }
+
+    .menu-card {
+      padding: 20px;
+    }
+
+    .menu-icon {
+      font-size: 2.5em;
     }
 
     .stats-grid {
       grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 15px;
+    }
+
+    .stat-number {
+      font-size: 2em;
+    }
+
+    .form-section,
+    .dashboard-section {
+      padding: 20px 15px;
     }
 
     .form-actions {
       flex-direction: column;
+      gap: 10px;
     }
 
     .btn {
       width: 100%;
+      padding: 14px 24px; /* Larger touch target */
     }
 
     .back-link {
       position: static;
       display: inline-block;
-      margin-top: 15px;
+      margin-bottom: 10px;
     }
 
-    .attendance-table {
-      font-size: 0.9em;
+    /* Responsive table wrapper */
+    .attendance-table,
+    .events-table {
+      font-size: 0.85em;
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .attendance-table thead,
+    .events-table thead {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .attendance-table tbody,
+    .events-table tbody {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
     }
 
     .attendance-table th,
-    .attendance-table td {
-      padding: 10px;
+    .attendance-table td,
+    .events-table th,
+    .events-table td {
+      padding: 8px 5px;
+      font-size: 0.9em;
+    }
+
+    /* Stack form elements better on mobile */
+    .member-item {
+      padding: 15px;
+    }
+
+    .member-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .checkbox-item {
+      padding: 12px;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+    }
+
+    .radio-label {
+      padding: 14px;
+    }
+
+    .radio-label input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+    }
+
+    .info-section,
+    .footer {
+      padding: 20px 15px;
+    }
+
+    .stats-list {
+      padding: 15px;
+    }
+
+    .stat-row {
+      flex-direction: column;
+      gap: 5px;
+      padding: 15px 0;
+    }
+
+    .stat-row .stat-value {
+      text-align: left;
+    }
+
+    .result-item {
+      padding: 15px;
+    }
+
+    .actions-bar {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .actions-bar .btn {
+      width: 100%;
+    }
+  }
+
+  /* Extra small devices */
+  @media (max-width: 375px) {
+    .header h1 {
+      font-size: 1.3em;
+    }
+
+    .menu-card h3 {
+      font-size: 1.1em;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .attendance-table th,
+    .attendance-table td,
+    .events-table th,
+    .events-table td {
+      padding: 6px 3px;
+      font-size: 0.8em;
     }
   }
 
@@ -637,7 +860,7 @@
 
   /* Current Event Banner */
   .current-event-banner {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 15px 20px;
     border-radius: 8px;
@@ -649,5 +872,68 @@
 
   .current-event-banner strong {
     font-weight: 600;
+  }
+
+  /* Leadership Page */
+  .leadership-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .leadership-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .leadership-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+  }
+
+  .leadership-card h3 {
+    color: #667eea;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+  }
+
+  .leadership-info {
+    text-align: left;
+  }
+
+  .leader-name {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .contact-item {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .contact-label {
+    font-weight: 600;
+    color: #667eea;
+    margin-right: 8px;
+  }
+
+  .contact-link {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+
+  .contact-link:hover {
+    color: #667eea;
+    text-decoration: underline;
   }
 </style>

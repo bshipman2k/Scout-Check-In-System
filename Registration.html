@@ -2,9 +2,30 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Family Registration</title>
+  <style>
+    input, select, textarea { font-size: 16px !important; }
+  </style>
   <?!= include('Stylesheet'); ?>
+  <script>
+    // Prevent iOS zoom - readonly trick
+    document.addEventListener('DOMContentLoaded', function() {
+      var inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea');
+      inputs.forEach(function(input) {
+        input.setAttribute('readonly', 'readonly');
+        input.style.fontSize = '16px';
+        
+        input.addEventListener('focus', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+        
+        input.addEventListener('touchstart', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="container">
@@ -20,30 +41,12 @@
         
         <div class="form-group">
           <label for="lastName">Family Last Name *</label>
-          <input type="text" id="lastName" name="lastName" required>
-        </div>
-
-        <div class="form-group">
-          <label>Do all family members share the same last name?</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" name="sharedLastName" value="yes" checked onchange="toggleLastNameFields()">
-              Yes, we all share the family last name
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="sharedLastName" value="no" onchange="toggleLastNameFields()">
-              No, family members have different last names
-            </label>
-          </div>
-        </div>
-
+            <input type="text" id="lastName" name="lastName" required>
         <h3>Parent/Guardian 1 *</h3>
         
         <div class="form-group">
           <label for="parent1Name">Full Name *</label>
-          <input type="text" id="parent1Name" name="parent1Name" required>
-        </div>
-
+            <input type="text" id="parent1Name" name="parent1Name" required>
         <div class="form-group">
           <label for="parent1Phone">Cell Phone *</label>
           <input type="tel" id="parent1Phone" name="parent1Phone" required placeholder="(555) 123-4567">
@@ -107,7 +110,20 @@
         </div>
         <div class="form-group">
           <label for="memberName${memberCount}">First Name *</label>
-          <input type="text" id="memberName${memberCount}" name="memberName${memberCount}" required placeholder="First and middle names">
+          <input type="text" id="memberName${memberCount}" name="memberName${memberCount}" required placeholder="First name">
+        </div>
+        <div class="form-group">
+          <label>Does this family member share the family name?</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="memberSharedName${memberCount}" value="yes" checked onchange="toggleMemberLastName(${memberCount})">
+              Yes
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="memberSharedName${memberCount}" value="no" onchange="toggleMemberLastName(${memberCount})">
+              No
+            </label>
+          </div>
         </div>
         <div class="form-group member-lastname-field" id="memberLastNameGroup${memberCount}" style="display: none;">
           <label for="memberLastName${memberCount}">Last Name *</label>
@@ -115,17 +131,59 @@
         </div>
         <div class="form-group">
           <label for="memberType${memberCount}">Type *</label>
-          <select id="memberType${memberCount}" name="memberType${memberCount}" required>
+          <select id="memberType${memberCount}" name="memberType${memberCount}" required onchange="toggleMemberTypeFields(${memberCount})">
             <option value="">Select...</option>
             <option value="Scout">Scout</option>
             <option value="Sibling">Sibling</option>
-            <option value="Parent">Parent</option>
-            <option value="Guardian">Guardian</option>
+            <option value="Adult - Non-Guardian">Adult - Non-Guardian</option>
           </select>
         </div>
         <div class="form-group">
           <label for="memberAge${memberCount}">Age (optional)</label>
           <input type="number" id="memberAge${memberCount}" name="memberAge${memberCount}" min="1" max="99">
+        </div>
+        <div class="form-group member-rank-field" id="memberRankGroup${memberCount}" style="display: none;">
+          <label for="memberRank${memberCount}">Rank</label>
+          <select id="memberRank${memberCount}" name="memberRank${memberCount}">
+            <option value="">Select Rank...</option>
+            <option value="Lion">Lion</option>
+            <option value="Tiger">Tiger</option>
+            <option value="Wolf">Wolf</option>
+            <option value="Bear">Bear</option>
+            <option value="Webelos">Webelos</option>
+            <option value="Arrow of Light">Arrow of Light</option>
+            <option value="Den Chief">Den Chief</option>
+          </select>
+        </div>
+        <div class="form-group member-den-field" id="memberDenGroup${memberCount}" style="display: none;">
+          <label for="memberDen${memberCount}">Den</label>
+          <input type="text" id="memberDen${memberCount}" name="memberDen${memberCount}" placeholder="e.g., Den 1, Den 5">
+        </div>
+        <div class="form-group member-adult-fields" id="memberAdultGroup${memberCount}" style="display: none;">
+          <label>Are they registered with Scouting America?</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="memberRegistered${memberCount}" value="yes">
+              Yes
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="memberRegistered${memberCount}" value="no">
+              No
+            </label>
+          </div>
+        </div>
+        <div class="form-group member-adult-fields" id="memberYPTGroup${memberCount}" style="display: none;">
+          <label>Do they have active Safeguarding Youth Training?</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="memberYPT${memberCount}" value="yes">
+              Yes
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="memberYPT${memberCount}" value="no">
+              No
+            </label>
+          </div>
         </div>
       `;
       
@@ -139,21 +197,48 @@
       }
     }
 
-    function toggleLastNameFields() {
-      var sharedLastName = document.querySelector('input[name="sharedLastName"]:checked').value;
-      var lastNameFields = document.querySelectorAll('.member-lastname-field');
+    function toggleMemberLastName(memberIndex) {
+      var sharedName = document.querySelector('input[name="memberSharedName' + memberIndex + '"]:checked');
+      var lastNameGroup = document.getElementById('memberLastNameGroup' + memberIndex);
+      var lastNameInput = document.getElementById('memberLastName' + memberIndex);
       
-      lastNameFields.forEach(function(field) {
-        if (sharedLastName === 'no') {
-          field.style.display = 'block';
-          var input = field.querySelector('input');
-          if (input) input.required = true;
+      if (sharedName && lastNameGroup && lastNameInput) {
+        if (sharedName.value === 'no') {
+          lastNameGroup.style.display = 'block';
+          lastNameInput.required = true;
         } else {
-          field.style.display = 'none';
-          var input = field.querySelector('input');
-          if (input) input.required = false;
+          lastNameGroup.style.display = 'none';
+          lastNameInput.required = false;
         }
-      });
+      }
+    }
+
+    function toggleMemberTypeFields(memberIndex) {
+      var typeSelect = document.getElementById('memberType' + memberIndex);
+      var rankGroup = document.getElementById('memberRankGroup' + memberIndex);
+      var denGroup = document.getElementById('memberDenGroup' + memberIndex);
+      var adultGroup = document.getElementById('memberAdultGroup' + memberIndex);
+      var yptGroup = document.getElementById('memberYPTGroup' + memberIndex);
+      
+      if (typeSelect && rankGroup && denGroup && adultGroup && yptGroup) {
+        var type = typeSelect.value;
+        if (type === 'Scout') {
+          rankGroup.style.display = 'block';
+          denGroup.style.display = 'block';
+          adultGroup.style.display = 'none';
+          yptGroup.style.display = 'none';
+        } else if (type === 'Adult - Non-Guardian') {
+          rankGroup.style.display = 'none';
+          denGroup.style.display = 'none';
+          adultGroup.style.display = 'block';
+          yptGroup.style.display = 'block';
+        } else {
+          rankGroup.style.display = 'none';
+          denGroup.style.display = 'none';
+          adultGroup.style.display = 'none';
+          yptGroup.style.display = 'none';
+        }
+      }
     }
 
     // Add first member by default
@@ -169,10 +254,8 @@
       messageDiv.textContent = 'Registering family...';
       
       // Collect form data
-      var sharedLastName = document.querySelector('input[name="sharedLastName"]:checked').value;
       var familyData = {
         lastName: document.getElementById('lastName').value,
-        sharedLastName: sharedLastName === 'yes',
         parent1Name: document.getElementById('parent1Name').value,
         parent1Phone: document.getElementById('parent1Phone').value,
         parent1Email: document.getElementById('parent1Email').value,
@@ -191,17 +274,33 @@
         var memberId = memberDiv.id.replace('member', '');
         
         var nameInput = document.getElementById('memberName' + memberId);
+        var sharedNameRadio = document.querySelector('input[name="memberSharedName' + memberId + '"]:checked');
         var lastNameInput = document.getElementById('memberLastName' + memberId);
         var typeInput = document.getElementById('memberType' + memberId);
         var ageInput = document.getElementById('memberAge' + memberId);
+        var rankInput = document.getElementById('memberRank' + memberId);
+        var denInput = document.getElementById('memberDen' + memberId);
+        var registeredRadio = document.querySelector('input[name="memberRegistered' + memberId + '"]:checked');
+        var yptRadio = document.querySelector('input[name="memberYPT' + memberId + '"]:checked');
         
         if (nameInput && typeInput && nameInput.value && typeInput.value) {
-          familyData.members.push({
+          var memberData = {
             name: nameInput.value,
+            sharedLastName: sharedNameRadio ? sharedNameRadio.value === 'yes' : true,
             lastName: lastNameInput ? lastNameInput.value : '',
             type: typeInput.value,
-            age: ageInput.value
-          });
+            age: ageInput.value,
+            rank: rankInput ? rankInput.value : '',
+            den: denInput ? denInput.value : ''
+          };
+          
+          // Add Adult - Non-Guardian specific fields
+          if (typeInput.value === 'Adult - Non-Guardian') {
+            memberData.registered = registeredRadio ? registeredRadio.value : '';
+            memberData.ypt = yptRadio ? yptRadio.value : '';
+          }
+          
+          familyData.members.push(memberData);
         }
       }
       

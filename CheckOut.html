@@ -2,9 +2,30 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Check Out</title>
+  <style>
+    input, select, textarea { font-size: 16px !important; }
+  </style>
   <?!= include('Stylesheet'); ?>
+  <script>
+    // Prevent iOS zoom - readonly trick
+    document.addEventListener('DOMContentLoaded', function() {
+      var inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea');
+      inputs.forEach(function(input) {
+        input.setAttribute('readonly', 'readonly');
+        input.style.fontSize = '16px';
+        
+        input.addEventListener('focus', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+        
+        input.addEventListener('touchstart', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="container">
@@ -215,11 +236,15 @@
               } else {
                 var membersHtml = '';
                 checkedInMembers.forEach(function(member, index) {
+                  var details = member.type;
+                  if (member.rank) details += ' - ' + member.rank;
+                  if (member.den) details += ' (' + member.den + ')';
+                  
                   membersHtml += `
                     <div class="checkbox-item">
                       <input type="checkbox" id="member${index}" value="${member.name}">
                       <label for="member${index}">
-                        <strong>${member.name}</strong> - ${member.type}
+                        <strong>${member.name}</strong> - ${details}
                       </label>
                     </div>
                   `;

@@ -2,9 +2,30 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Check In</title>
+  <style>
+    input, select, textarea { font-size: 16px !important; }
+  </style>
   <?!= include('Stylesheet'); ?>
+  <script>
+    // Prevent iOS zoom - readonly trick
+    document.addEventListener('DOMContentLoaded', function() {
+      var inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea');
+      inputs.forEach(function(input) {
+        input.setAttribute('readonly', 'readonly');
+        input.style.fontSize = '16px';
+        
+        input.addEventListener('focus', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+        
+        input.addEventListener('touchstart', function() {
+          this.removeAttribute('readonly');
+        }, {once: true});
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="container">
@@ -213,21 +234,29 @@
               family.members.forEach(function(member, index) {
                 if (checkedInNames.has(member.name)) {
                   // Already checked in - show without checkbox
-                  membersHtml += `
-                    <div class="checkbox-item" style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-                      <span style="color: #2e7d32; font-weight: bold;">✓ Already Checked In:</span>
-                      <strong>${member.name}</strong> - ${member.type}
-                      ${member.age ? ' (Age ' + member.age + ')' : ''}
+                var details = member.type;
+                if (member.rank) details += ' - ' + member.rank;
+                if (member.den) details += ' (' + member.den + ')';
+                if (member.age) details += ' - Age ' + member.age;
+                
+                membersHtml += `
+                  <div class="checkbox-item" style="background-color: #e8f5e9; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                    <span style="color: #2e7d32; font-weight: bold;">✓ Already Checked In:</span>
+                    <strong>${member.name}</strong> - ${details}
                     </div>
                   `;
                 } else {
                   // Not checked in - show with checkbox
+                  var details = member.type;
+                  if (member.rank) details += ' - ' + member.rank;
+                  if (member.den) details += ' (' + member.den + ')';
+                  if (member.age) details += ' - Age ' + member.age;
+                  
                   membersHtml += `
                     <div class="checkbox-item">
                       <input type="checkbox" id="member${index}" value="${member.name}">
                       <label for="member${index}">
-                        <strong>${member.name}</strong> - ${member.type}
-                        ${member.age ? ' (Age ' + member.age + ')' : ''}
+                        <strong>${member.name}</strong> - ${details}
                       </label>
                     </div>
                   `;

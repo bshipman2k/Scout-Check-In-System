@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pack Leadership</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>👥 Pack Leadership</h1>
+      <p class="subtitle">Contact our pack leaders</p>
+      <a href="#home" onclick="goHome(); return false;" class="back-link">← Back to Home</a>
+    </div>
+
+    <div class="form-section">
+      <div class="info-box">
+        <h4>📧 Have questions? Reach out to our leadership team!</h4>
+        <p>Our leaders are here to help with any questions about events, registration, or pack activities.</p>
+      </div>
+
+      <!-- Cubmaster -->
+      <div class="leadership-card">
+        <div class="leadership-icon">🎖️</div>
+        <h3>Cubmaster</h3>
+        <div class="leadership-info">
+          <p class="leader-name" id="cubmasterName">Loading...</p>
+          <p class="contact-item">
+            <span class="contact-label">📧 Email:</span>
+            <a href="#" id="cubmasterEmail" class="contact-link">Loading...</a>
+          </p>
+          <p class="contact-item">
+            <span class="contact-label">📱 Phone:</span>
+            <a href="#" id="cubmasterPhone" class="contact-link">Loading...</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Assistant Cubmaster -->
+      <div class="leadership-card">
+        <div class="leadership-icon">🎗️</div>
+        <h3>Assistant Cubmaster</h3>
+        <div class="leadership-info">
+          <p class="leader-name" id="assistantName">Loading...</p>
+          <p class="contact-item">
+            <span class="contact-label">📧 Email:</span>
+            <a href="#" id="assistantEmail" class="contact-link">Loading...</a>
+          </p>
+          <p class="contact-item">
+            <span class="contact-label">📱 Phone:</span>
+            <a href="#" id="assistantPhone" class="contact-link">Loading...</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Committee Chair -->
+      <div class="leadership-card">
+        <div class="leadership-icon">⭐</div>
+        <h3>Committee Chair</h3>
+        <div class="leadership-info">
+          <p class="leader-name" id="chairName">Loading...</p>
+          <p class="contact-item">
+            <span class="contact-label">📧 Email:</span>
+            <a href="#" id="chairEmail" class="contact-link">Loading...</a>
+          </p>
+          <p class="contact-item">
+            <span class="contact-label">📱 Phone:</span>
+            <a href="#" id="chairPhone" class="contact-link">Loading...</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load leadership information
+    google.script.run
+      .withSuccessHandler(function(config) {
+        // Cubmaster
+        document.getElementById('cubmasterName').textContent = config.leadership.cubmaster.name;
+        var cubmasterEmailLink = document.getElementById('cubmasterEmail');
+        cubmasterEmailLink.textContent = config.leadership.cubmaster.email;
+        cubmasterEmailLink.href = 'mailto:' + config.leadership.cubmaster.email;
+        var cubmasterPhoneLink = document.getElementById('cubmasterPhone');
+        cubmasterPhoneLink.textContent = config.leadership.cubmaster.phone;
+        cubmasterPhoneLink.href = 'tel:' + config.leadership.cubmaster.phone.replace(/[^0-9]/g, '');
+        
+        // Assistant Cubmaster
+        document.getElementById('assistantName').textContent = config.leadership.assistantCubmaster.name;
+        var assistantEmailLink = document.getElementById('assistantEmail');
+        assistantEmailLink.textContent = config.leadership.assistantCubmaster.email;
+        assistantEmailLink.href = 'mailto:' + config.leadership.assistantCubmaster.email;
+        var assistantPhoneLink = document.getElementById('assistantPhone');
+        assistantPhoneLink.textContent = config.leadership.assistantCubmaster.phone;
+        assistantPhoneLink.href = 'tel:' + config.leadership.assistantCubmaster.phone.replace(/[^0-9]/g, '');
+        
+        // Committee Chair
+        document.getElementById('chairName').textContent = config.leadership.committeeChair.name;
+        var chairEmailLink = document.getElementById('chairEmail');
+        chairEmailLink.textContent = config.leadership.committeeChair.email;
+        chairEmailLink.href = 'mailto:' + config.leadership.committeeChair.email;
+        var chairPhoneLink = document.getElementById('chairPhone');
+        chairPhoneLink.textContent = config.leadership.committeeChair.phone;
+        chairPhoneLink.href = 'tel:' + config.leadership.committeeChair.phone.replace(/[^0-9]/g, '');
+      })
+      .withFailureHandler(function(error) {
+        console.error('Error loading leadership:', error);
+      })
+      .getConfig();
+
+    function goHome() {
+      var baseUrl = 'https://script.google.com/macros/s/AKfycbyFytMVAE404Kz3r3V_Jv0kmFP_CunjWKLNXIZErmuSBwMm_QweS0ZvAc2-3Q12oUtDnA/exec';
+      window.top.location.href = baseUrl;
+    }
+  </script>
+</body>
+</html>

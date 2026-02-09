@@ -33,6 +33,10 @@ function doGet(e) {
       var template = HtmlService.createTemplateFromFile('Registration');
       template.eventId = eventId;
       return template.evaluate().setTitle('Family Registration');
+    case 'updateregistration':
+      var template = HtmlService.createTemplateFromFile('UpdateRegistration');
+      template.eventId = eventId;
+      return template.evaluate().setTitle('Update Registration');
     case 'checkin':
       var template = HtmlService.createTemplateFromFile('CheckIn');
       template.eventId = eventId;
@@ -45,6 +49,10 @@ function doGet(e) {
       var template = HtmlService.createTemplateFromFile('Dashboard');
       template.eventId = eventId;
       return template.evaluate().setTitle('Leader Dashboard');
+    case 'leadership':
+      var template = HtmlService.createTemplateFromFile('Leadership');
+      template.eventId = eventId;
+      return template.evaluate().setTitle('Pack Leadership');
     default:
       var template = HtmlService.createTemplateFromFile('Index');
       template.eventId = eventId;
@@ -80,10 +88,10 @@ function initializeSpreadsheet() {
   var membersSheet = ss.getSheetByName('FamilyMembers');
   if (!membersSheet) {
     membersSheet = ss.insertSheet('FamilyMembers');
-    membersSheet.getRange('A1:D1').setValues([[
-      'Family ID', 'Member Name', 'Member Type', 'Age'
+    membersSheet.getRange('A1:H1').setValues([[
+      'Family ID', 'Member Name', 'Member Type', 'Age', 'Rank', 'Den', 'Registered', 'YPT'
     ]]);
-    membersSheet.getRange('A1:D1').setFontWeight('bold').setBackground('#4285f4').setFontColor('white');
+    membersSheet.getRange('A1:H1').setFontWeight('bold').setBackground('#4285f4').setFontColor('white');
   }
   
   // Create Events sheet
@@ -142,31 +150,29 @@ function registerFamily(familyData) {
     
     // Add Parent 1 as a family member
     if (familyData.parent1Name) {
-      var parent1FullName = familyData.parent1Name;
-      // If shared last name, append family last name if not already included
-      if (familyData.sharedLastName && !parent1FullName.toLowerCase().includes(familyData.lastName.toLowerCase())) {
-        parent1FullName = parent1FullName + ' ' + familyData.lastName;
-      }
       membersSheet.appendRow([
         familyId,
-        parent1FullName,
+        familyData.parent1Name,
         'Parent',
-        '' // Age not collected for parents
+        '', // Age not collected for parents
+        '', // Rank not applicable for parents
+        '', // Den not applicable for parents
+        '', // Registered not applicable
+        ''  // YPT not applicable
       ]);
     }
     
     // Add Parent 2 as a family member if provided
     if (familyData.parent2Name) {
-      var parent2FullName = familyData.parent2Name;
-      // If shared last name, append family last name if not already included
-      if (familyData.sharedLastName && !parent2FullName.toLowerCase().includes(familyData.lastName.toLowerCase())) {
-        parent2FullName = parent2FullName + ' ' + familyData.lastName;
-      }
       membersSheet.appendRow([
         familyId,
-        parent2FullName,
+        familyData.parent2Name,
         'Parent',
-        '' // Age not collected for parents
+        '', // Age not collected for parents
+        '', // Rank not applicable for parents
+        '', // Den not applicable for parents
+        '', // Registered not applicable
+        ''  // YPT not applicable
       ]);
     }
     
@@ -174,7 +180,8 @@ function registerFamily(familyData) {
     familyData.members.forEach(function(member) {
       var memberFullName = member.name;
       
-      if (familyData.sharedLastName) {
+      // Use member's individual sharedLastName preference
+      if (member.sharedLastName) {
         // Use family last name
         if (!memberFullName.toLowerCase().includes(familyData.lastName.toLowerCase())) {
           memberFullName = memberFullName + ' ' + familyData.lastName;
@@ -192,7 +199,11 @@ function registerFamily(familyData) {
         familyId,
         memberFullName,
         member.type,
-        member.age || ''
+        member.age || '',
+        member.rank || '',
+        member.den || '',
+        member.registered || '',
+        member.ypt || ''
       ]);
     });
     
@@ -243,7 +254,9 @@ function searchFamilies(searchTerm) {
             members.push({
               name: membersData[j][1],
               type: membersData[j][2],
-              age: membersData[j][3]
+              age: membersData[j][3],
+              rank: membersData[j][4] || '',
+              den: membersData[j][5] || ''
             });
           }
         }
@@ -357,21 +370,25 @@ function getCurrentAttendance(eventId) {
     
     var attendanceSheet = ss.getSheetByName(ATTENDANCE_SHEET);
     var familiesSheet = ss.getSheetByName(FAMILIES_SHEET);
+    var membersSheet = ss.getSheetByName('FamilyMembers');
     
     Logger.log('Attendance sheet exists: ' + !!attendanceSheet);
     Logger.log('Families sheet exists: ' + !!familiesSheet);
+    Logger.log('Members sheet exists: ' + !!membersSheet);
     
-    if (!attendanceSheet || !familiesSheet) {
-      Logger.log('ERROR: Sheets not found - Attendance: ' + !!attendanceSheet + ', Families: ' + !!familiesSheet);
+    if (!attendanceSheet || !familiesSheet || !membersSheet) {
+      Logger.log('ERROR: Sheets not found');
       return [];
     }
     
     var attendanceData = attendanceSheet.getDataRange().getValues();
     var familiesData = familiesSheet.getDataRange().getValues();
+    var membersData = membersSheet.getDataRange().getValues();
     
     Logger.log('EventId received: ' + eventId);
     Logger.log('Attendance rows: ' + attendanceData.length);
     Logger.log('Families rows: ' + familiesData.length);
+    Logger.log('Members rows: ' + membersData.length);
     
     // Build a map of family IDs to last names
     var familyMap = {};
@@ -380,6 +397,21 @@ function getCurrentAttendance(eventId) {
         var famId = String(familiesData[i][0]).trim();
         familyMap[famId] = familiesData[i][1];
         Logger.log('Mapped family: ' + famId + ' -> ' + familiesData[i][1]);
+      }
+    }
+    
+    // Build a map of member details
+    var memberDetailsMap = {};
+    for (var i = 1; i < membersData.length; i++) {
+      if (membersData[i][0] && membersData[i][1]) {
+        var famId = String(membersData[i][0]).trim();
+        var memberName = String(membersData[i][1]).trim();
+        var key = famId + '|' + memberName;
+        memberDetailsMap[key] = {
+          type: membersData[i][2] || '',
+          rank: membersData[i][4] || '',
+          den: membersData[i][5] || ''
+        };
       }
     }
     
@@ -412,11 +444,16 @@ function getCurrentAttendance(eventId) {
             checkInTime = checkInTime.toISOString();
           }
           
+          var memberDetails = memberDetailsMap[key] || {};
+          
           currentlyOnSite[key] = {
             familyId: familyId,
             lastName: familyMap[familyId] || 'Unknown',
             memberName: memberName,
-            checkInTime: checkInTime
+            checkInTime: checkInTime,
+            type: memberDetails.type || '',
+            rank: memberDetails.rank || '',
+            den: memberDetails.den || ''
           };
           Logger.log('Added to currentlyOnSite: ' + key);
         } else if (action === 'CHECK-OUT') {
@@ -553,6 +590,8 @@ function getCheckedInMembers(eventId, familyId) {
         allMembers.push({
           name: membersData[i][1],
           type: membersData[i][2],
+          rank: membersData[i][4] || '',
+          den: membersData[i][5] || '',
           checkedIn: false
         });
       }
@@ -588,6 +627,263 @@ function getCheckedInMembers(eventId, familyId) {
 
 /**
  * Get attendance statistics for dashboard
+ */
+function getAttendanceStats(eventId) {
+  try {
+    var attendance = getCurrentAttendance(eventId);
+    var stats = {
+      totalOnSite: attendance.length,
+      scouts: 0,
+      siblings: 0,
+      adults: 0,
+      familiesCount: 0
+    };
+    
+    var familiesSet = {};
+    
+    // Get member types to count properly
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var membersSheet = ss.getSheetByName('FamilyMembers');
+    if (!membersSheet) return stats;
+    
+    var membersData = membersSheet.getDataRange().getValues();
+    var memberTypeMap = {};
+    
+    for (var i = 1; i < membersData.length; i++) {
+      memberTypeMap[membersData[i][1]] = membersData[i][2]; // name -> type
+    }
+    
+    attendance.forEach(function(person) {
+      familiesSet[person.familyId] = true;
+      
+      var type = memberTypeMap[person.memberName];
+      if (type === 'Scout') {
+        stats.scouts++;
+      } else if (type === 'Sibling') {
+        stats.siblings++;
+      } else if (type === 'Parent' || type === 'Guardian' || type === 'Adult - Non-Guardian') {
+        stats.adults++;
+      }
+    });
+    
+    stats.familiesCount = Object.keys(familiesSet).length;
+    
+    return stats;
+  } catch (error) {
+    Logger.log('Get stats error: ' + error);
+    return {
+      totalOnSite: 0,
+      scouts: 0,
+      siblings: 0,
+      adults: 0,
+      familiesCount: 0
+    };
+  }
+}
+
+/**
+ * Get a single family by ID
+ */
+function getFamilyById(familyId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var familiesSheet = ss.getSheetByName(FAMILIES_SHEET);
+    var membersSheet = ss.getSheetByName('FamilyMembers');
+    
+    if (!familiesSheet || !membersSheet) {
+      return null;
+    }
+    
+    var familiesData = familiesSheet.getDataRange().getValues();
+    var membersData = membersSheet.getDataRange().getValues();
+    
+    // Find family
+    var familyRow = null;
+    for (var i = 1; i < familiesData.length; i++) {
+      if (String(familiesData[i][0]).trim() === String(familyId).trim()) {
+        familyRow = familiesData[i];
+        break;
+      }
+    }
+    
+    if (!familyRow) return null;
+    
+    // Get all members for this family
+    var members = [];
+    for (var j = 1; j < membersData.length; j++) {
+      if (String(membersData[j][0]).trim() === String(familyId).trim()) {
+        var fullName = membersData[j][1];
+        var nameParts = fullName.split(' ');
+        var firstName = nameParts.slice(0, -1).join(' ') || fullName;
+        var lastName = nameParts[nameParts.length - 1];
+        
+        // Check if last name matches family last name
+        var individualLastName = '';
+        if (lastName && lastName.toLowerCase() !== familyRow[1].toLowerCase()) {
+          individualLastName = lastName;
+        }
+        
+        members.push({
+          name: fullName,
+          firstName: firstName,
+          individualLastName: individualLastName,
+          type: membersData[j][2],
+          age: membersData[j][3],
+          rank: membersData[j][4] || '',
+          den: membersData[j][5] || '',
+          registered: membersData[j][6] || '',
+          ypt: membersData[j][7] || ''
+        });
+      }
+    }
+    
+    return {
+      familyId: familyId,
+      lastName: familyRow[1],
+      parent1Name: familyRow[2],
+      parent1Phone: familyRow[3],
+      parent1Email: familyRow[4],
+      parent2Name: familyRow[5],
+      parent2Phone: familyRow[6],
+      parent2Email: familyRow[7],
+      members: members
+    };
+  } catch (error) {
+    Logger.log('Get family by ID error: ' + error);
+    return null;
+  }
+}
+
+/**
+ * Update family registration
+ */
+function updateFamily(familyData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var familiesSheet = ss.getSheetByName(FAMILIES_SHEET);
+    var membersSheet = ss.getSheetByName('FamilyMembers');
+    
+    if (!familiesSheet || !membersSheet) {
+      return {
+        success: false,
+        message: 'Required sheets not found. Please run initializeSpreadsheet()'
+      };
+    }
+    
+    var familyId = familyData.familyId;
+    
+    // Update family info in Families sheet
+    var familiesData = familiesSheet.getDataRange().getValues();
+    for (var i = 1; i < familiesData.length; i++) {
+      if (String(familiesData[i][0]).trim() === String(familyId).trim()) {
+        familiesSheet.getRange(i + 1, 2, 1, 7).setValues([[
+          familyData.lastName,
+          familyData.parent1Name,
+          familyData.parent1Phone,
+          familyData.parent1Email,
+          familyData.parent2Name || '',
+          familyData.parent2Phone || '',
+          familyData.parent2Email || ''
+        ]]);
+        break;
+      }
+    }
+    
+    // Delete old members (except parents)
+    var membersData = membersSheet.getDataRange().getValues();
+    var rowsToDelete = [];
+    
+    for (var i = membersData.length - 1; i >= 1; i--) {
+      if (String(membersData[i][0]).trim() === String(familyId).trim()) {
+        var memberType = membersData[i][2];
+        // Keep Parent entries, remove others
+        if (memberType !== 'Parent') {
+          rowsToDelete.push(i + 1);
+        }
+      }
+    }
+    
+    // Delete rows in reverse order
+    rowsToDelete.forEach(function(rowNum) {
+      membersSheet.deleteRow(rowNum);
+    });
+    
+    // Update parent entries
+    membersData = membersSheet.getDataRange().getValues();
+    var parentCount = 0;
+    for (var i = 1; i < membersData.length; i++) {
+      if (String(membersData[i][0]).trim() === String(familyId).trim() && membersData[i][2] === 'Parent') {
+        parentCount++;
+        if (parentCount === 1 && familyData.parent1Name) {
+          membersSheet.getRange(i + 1, 2).setValue(familyData.parent1Name);
+        } else if (parentCount === 2 && familyData.parent2Name) {
+          membersSheet.getRange(i + 1, 2).setValue(familyData.parent2Name);
+        } else if (parentCount === 2 && !familyData.parent2Name) {
+          // Remove second parent if it was cleared
+          membersSheet.deleteRow(i + 1);
+        }
+      }
+    }
+    
+    // Add Parent 2 if it doesn't exist but is now provided
+    if (familyData.parent2Name && parentCount < 2) {
+      membersSheet.appendRow([
+        familyId,
+        familyData.parent2Name,
+        'Parent',
+        '',
+        '',
+        '',
+        '',
+        ''
+      ]);
+    }
+    
+    // Add new/updated family members
+    familyData.members.forEach(function(member) {
+      var memberFullName = member.name;
+      
+      if (member.sharedLastName) {
+        // Use family last name
+        if (!memberFullName.toLowerCase().includes(familyData.lastName.toLowerCase())) {
+          memberFullName = memberFullName + ' ' + familyData.lastName;
+        }
+      } else {
+        // Use individual last name if provided
+        if (member.lastName && member.lastName.trim()) {
+          if (!memberFullName.toLowerCase().includes(member.lastName.toLowerCase())) {
+            memberFullName = memberFullName + ' ' + member.lastName;
+          }
+        }
+      }
+      
+      membersSheet.appendRow([
+        familyId,
+        memberFullName,
+        member.type,
+        member.age || '',
+        member.rank || '',
+        member.den || '',
+        member.registered || '',
+        member.ypt || ''
+      ]);
+    });
+    
+    return {
+      success: true,
+      message: 'Family registration updated successfully!'
+    };
+  } catch (error) {
+    Logger.log('Update family error: ' + error);
+    return {
+      success: false,
+      message: 'Error: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * Get attendance statistics for dashboard (old position)
  */
 function getAttendanceStats(eventId) {
   try {

@@ -2,7 +2,7 @@
 <html>
 <head>
   <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Leader Dashboard</title>
   <?!= include('Stylesheet'); ?>
 </head>
@@ -172,7 +172,7 @@
             listDiv.innerHTML = '<p class="info">No one is currently checked in.</p>';
           } else {
             var html = '<table class="attendance-table">';
-            html += '<thead><tr><th>Family</th><th>Name</th><th>Check-In Date</th><th>Check-In Time</th></tr></thead>';
+            html += '<thead><tr><th>Family</th><th>Name</th><th>Type</th><th>Rank</th><th>Den</th><th>Check-In Date</th><th>Check-In Time</th></tr></thead>';
             html += '<tbody>';
             
             attendance.forEach(function(person) {
@@ -192,6 +192,9 @@
                 <tr>
                   <td>${person.lastName}</td>
                   <td>${person.memberName}</td>
+                  <td>${person.type || '-'}</td>
+                  <td>${person.rank || '-'}</td>
+                  <td>${person.den || '-'}</td>
                   <td>${dateStr}</td>
                   <td>${timeStr}</td>
                 </tr>
